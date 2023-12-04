@@ -13,8 +13,8 @@ const (
 type BOOK_SIDE string
 
 const (
-	BUY  EVENT_TYPE = "buy"
-	SELL EVENT_TYPE = "sell"
+	BUY  BOOK_SIDE = "buy"
+	SELL BOOK_SIDE = "sell"
 )
 
 type FEED_TYPE string
