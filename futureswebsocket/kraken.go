@@ -23,7 +23,7 @@ type Kraken struct {
 }
 
 // New - constructor of Kraken object
-func New(key string, secret string) *Kraken {
+func NewKraken(key string, secret string) *Kraken {
 	if key == "" || secret == "" {
 		log.Print("[WARNING] You are not set api key and secret!")
 	}
@@ -53,7 +53,17 @@ func (k *Kraken) SubscribeToBooks(productIds []string) error {
 	return nil
 }
 
-func (k *Kraken) Connect() error {
+func (k *Kraken) ConnectAndSubscribeToOrderBooks(productIds []string) error {
+	for {
+		err := k.connectAndSubscribeOnce(productIds)
+		if err != nil {
+			log.Println("Connection error:", err)
+			time.Sleep(5 * time.Second) // Wait before attempting reconnection
+		}
+	}
+}
+
+func (k *Kraken) connectAndSubscribeOnce(productIds []string) error {
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
@@ -62,10 +72,20 @@ func (k *Kraken) Connect() error {
 
 	conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
-		log.Fatal("dial:", err)
+		log.Println("dial:", err)
+		return err
 	}
 	k.Conn = conn
 	done := make(chan struct{})
+
+	// Handle resubscription on reconnection
+	if len(productIds) > 0 {
+		err = k.SubscribeToBooks(productIds)
+		if err != nil {
+			log.Println("Subscribe error:", err)
+			return err
+		}
+	}
 
 	// Read messages from server
 	go func() {
